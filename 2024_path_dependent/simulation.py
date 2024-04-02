@@ -169,6 +169,10 @@ class Trading_Policy:
         holding = holding[0]
         return holding
     
+    def entropy(self, x, mu, sigma, dt, h, gamma):
+        dist = self.distribution(x, mu, sigma, dt, h, gamma)
+        return -np.sum(dist * np.log(dist)) * gamma
+    
 
     def _ensure_tensor(self, x):
         """
@@ -212,3 +216,29 @@ def simulated_trading(policy, path, intial_wealth, mu, sigma, dt, h, gamma):
         wealth_history[i] = wealth_history[i - 1] + wealth_change
 
     return holding_history, wealth_history
+
+############################################################################################################
+
+
+# the following function is to calculate the loss of one path
+# using the continuous TD error
+def one_path_loss(new_value_net, policy, wealth_history, dt, h, gamma, mu, sigma):
+    # wealth_history: path of wealth
+    # policy: trading policy object
+    # new_value_net: new value network, the network need to be trained 
+
+    n = len(wealth_history)
+    TD_error = np.zeros(n)
+
+    # make the wealth_hisotry as 1 dimensional tensor 
+    wealth_history = torch.tensor(wealth_history, dtype = torch.float32)
+
+    for i in range(2, n):
+        x = wealth_history[:i]
+        x_short = wealth_history[:i-1]
+        value_derivative = (new_value_net(x) - new_value_net(x_short)) / dt
+        entropy = policy.entropy(x, mu, sigma, dt, h, gamma)
+        TD_error[i] = value_derivative + entropy
+
+    # return the sum of square of TD_error
+    return 0.5 * np.sum(TD_error**2) * dt
