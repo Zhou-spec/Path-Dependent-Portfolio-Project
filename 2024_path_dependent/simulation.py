@@ -131,7 +131,7 @@ class Trading_Policy:
         # gamma is the risk aversion coefficient
 
         x = self._ensure_tensor(x)
-        par_t = self.f.partial_t(x, dt)
+        par_t = self.f.partial_t(x, dt) 
         par_x = self.f.partial_x(x, h)
         par_xx = self.f.partial_xx(x, h)
 
@@ -228,7 +228,7 @@ def one_path_loss(new_value_net, policy, wealth_history, dt, h, gamma, mu, sigma
     # new_value_net: new value network, the network need to be trained 
 
     n = len(wealth_history)
-    TD_error = np.zeros(n)
+    TD_error = torch.tensor(0.0, dtype = torch.float32)
 
     # make the wealth_hisotry as 1 dimensional tensor 
     wealth_history = torch.tensor(wealth_history, dtype = torch.float32)
@@ -238,7 +238,8 @@ def one_path_loss(new_value_net, policy, wealth_history, dt, h, gamma, mu, sigma
         x_short = wealth_history[:i-1]
         value_derivative = (new_value_net(x) - new_value_net(x_short)) / dt
         entropy = policy.entropy(x, mu, sigma, dt, h, gamma)
-        TD_error[i] = value_derivative + entropy
 
-    # return the sum of square of TD_error
-    return 0.5 * np.sum(TD_error**2) * dt
+        TD_error += (value_derivative + entropy) ** 2        
+
+
+    return 0.5 * TD_error * dt
